@@ -79,7 +79,7 @@ const compress = (arr, n = 4, max = 256) => {
 */
 const stringToCharCodeArray = string => string.split('').map(ch => ch.charCodeAt(0))
 
-const HumanHash = (string, outputLength = 4, separator = ' ', wordArray = DEFAULT_WORDLIST ) => {
+const humanHash = (string, outputLength = 4, separator = ' ', wordArray = DEFAULT_WORDLIST ) => {
     const max = wordArray.length
     const charCodeArray = stringToCharCodeArray(string)
     const compressedArray = compress(charCodeArray, outputLength, max)
@@ -93,8 +93,4 @@ const HumanHash = (string, outputLength = 4, separator = ' ', wordArray = DEFAUL
         .reduce((a, b) => a + separator + b)
 }
 
-export default {
-  methods: {
-    humanHash: HumanHash
-  }
-}
+export default humanHash
