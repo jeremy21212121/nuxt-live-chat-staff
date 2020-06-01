@@ -2,6 +2,9 @@ require('dotenv').config()
 
 export default {
   mode: 'universal',
+  server: {
+    port: 4321
+  },
   /*
   ** Headers of the page
   */
@@ -53,7 +56,7 @@ export default {
     }
   },
   router: {
-    middleware: ['auth']
+    // middleware: ['auth']
   },
   /*
   ** Axios module configuration

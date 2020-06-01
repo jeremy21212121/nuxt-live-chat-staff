@@ -1,6 +1,8 @@
 <style lang="scss" scoped>
 @import '@/scss/colours.scss';
+@import '@/scss/boxShadows.scss';
 main.container {
+  justify-content: flex-start;
   margin-top: 60px;
   section.heading {
     width: 100%;
@@ -50,16 +52,16 @@ main.container {
     }
     h1.title {
       margin: 0;
+      font-size: 32px;
     }
   }
 }
 section.convos {
   width: 100%;
-
   ul.convo-list {
     padding: 0;
     width: 100%;
-    height: 75vh;
+    // min-height: 75vh;
     display: flex;
     flex-wrap: wrap;
     justify-content: space-around;
@@ -76,39 +78,29 @@ section.convos {
       transition: all 300ms ease;
       animation: 300ms appear ease;
       color: $light;
+      border-radius: 4px;
+      border: 1px solid $primary;
+      -webkit-tap-highlight-color: $light;
+      text-decoration: none;
+      padding: 10px 20px;
+      transition: color, background-color, max-height 300ms ease;
       &.active {
+        h3 {
+          color: $light;
+          -webkit-text-stroke: 1px $primary;
+        }
         min-height: 550px;
         flex-direction: row;
         flex-wrap: wrap;
-        align-items: flex-start;
+        align-items: center;
         padding: 3px 6px;
         div.alert-wrapper {
           display: none;
         }
-        ul.messages {
-          padding: 0;
-          width: 100%;
-          height: 80%;
-          border: 1px solid $primary;
-          flex-grow: 1;
-          list-style-type: none;
-          li {
-            border: 1px solid $primary;
-            display: flex;
-            align-items: center;
-            margin: 2px;
-            img {
-              border-radius: 50%;
-              padding: 4px;
-            }
-            span {
-              flex-grow: 1;
-            }
-          }
-        }
-        div.input {
+        form.input {
           display: flex;
-          input {
+          width: 100%;
+          input[type="text"], textarea {
             flex-grow: 1;
           }
         }
@@ -116,11 +108,14 @@ section.convos {
       &.small {
         flex-direction: row;
         padding: 5px 15px;
-        height: 75px;
-        // justify-content: flex-start;
+        height: 50px;
+        justify-content: space-between;
+        img {
+          max-width: 30px;
+          max-height: 30px;
+        }
         div {
           width: 0px;
-          // flex-basis: 0px;
           position: relative;
           right: 5%;
           span {
@@ -159,16 +154,22 @@ section.convos {
         }
       }
       img {
-        // transform: scale(2);
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
+        border-radius: 4px;
       }
       h3 {
         text-transform: capitalize;
-        // color: $light;
+        color: $primary;
+        &.smaller {
+          font-size: 17px;
+        }
       }
-      &:hover {
-        color: $black90;
+      img.close {
+        width: 24px;
+        height: 24px;
+        -webkit-tap-highlight-color: $secondary;
+        border-radius: 12px;
       }
     }
   }
@@ -196,7 +197,7 @@ section.convos {
       <div v-if="ioSocket" class="status">
         <span>Connected: </span>
         <span class="indicator" :class="{ active: isConnected }" :title="(() => { const con = isConnected ? 'connected' : 'disconnected'; return `You are ${con}`})()"></span>
-        <a @click.prevent="statusBar.a.action" :href="statusBar.a.href" :class="statusBar.a.class" :title="`Click to ${statusBar.a.text}`">{{ statusBar.a.text }}</a>
+        <!-- <a @click.prevent="statusBar.a.action" :href="statusBar.a.href" :class="statusBar.a.class" :title="`Click to ${statusBar.a.text}`">{{ statusBar.a.text }}</a> -->
       </div>
       <h1 class="title">{{ title }}</h1>
     </section>
@@ -205,64 +206,48 @@ section.convos {
         <li
           v-for="(sid, index) in convoSids"
           :key="`chatbox${index}`"
-          @click.prevent="convoClickHandler(conversations[sid])"
+          @click.prevent="convoClickHandler(sid)"
           href="#"
-          class="button--grey chatbox"
-          :class="{ clickable: !activeConvo || activeConvo.sid !==  sid, small: activeConvo && activeConvo.sid !==  sid, active: activeConvo && activeConvo.sid ===  sid }"
+          class="chatbox"
+          :class="{ clickable: !activeConvo || activeConvo.sid !==  sid, small: activeConvo && activeConvo.sid !==  sid, active: activeConvo && activeConvo.sid === sid }"
         >
-          <div class="alert-wrapper" v-if="conversations[sid].messages.length && conversations[sid].lastRead < conversations[sid].messages[conversations[sid].messages.length - 1].time">
+          <div class="alert-wrapper" v-if="getMessages(sid).length && getConvo(sid).lastRead < getMessages(sid)[getMessages(sid).length - 1].time">
             <span v-if="true" class="new">New message(s) from:</span>
             <span class="alert">!</span>
           </div>
-          <img :src="conversations[sid].identicon" :alt="conversations[sid].humanId" :title="conversations[sid].humanId">
-          <h3>{{ conversations[sid].humanId }}</h3>
-          <ul class="messages"
-            v-if="activeConvo && activeConvo.sid ===  sid"
-          >
-            <li
-             v-for="(message, msgIndex) in conversations[sid].messages"
-             :key="`message${msgIndex}`"
-             :class="message.to === 'staff' ? 'received' : 'sent'"
-            >
-              <img :src="message.to === 'staff' ? activeConvo.identicon : staffIcon" alt="Sender icon">
-              <span>{{ message.message }}</span>
-            </li>
-          </ul>
-          <div v-if="activeConvo && activeConvo.sid ===  sid" class="input">
-            <input v-model="messageBuffer" type="text">
-            <button @click.prevent="sendMessage(activeConvo)" :disabled="!messageBuffer.length">Send</button>
-          </div>
+          <img :src="getConvo(sid).identicon" :alt="getConvo(sid).humanId" :title="getConvo(sid).humanId">
+          <h3 :class="{ smaller:  getConvo(sid).humanId.length > 27 }">{{ getConvo(sid).humanId }}</h3>
+          <img v-if="activeConvo && activeConvo.sid ===  sid" @click.prevent="$router.replace({ query: {} })" :src="require('@/assets/close.svg')" alt="close conversation" title="Close" class="close">
+          <message-box 
+            v-if="activeMessages && activeConvo.sid === sid"
+            :messages="activeMessages"
+            :convo="activeConvo"
+            ref="messageBox"
+          />
+          <form v-if="activeConvo && activeConvo.sid ===  sid" @submit.prevent="sendMessage(activeConvo.id)" class="input">
+            <!-- <input v-model="messageBuffer" @keyup.enter="()=>{}" type="text"> -->
+            <textarea v-model.trim="messageBuffer" @keyup.enter="keyUp" :rows="messageBuffer ? messageBuffer.split('\n').length : 1" />
+            <button @click.prevent="sendMessage(activeConvo.id)" ref="formButton" :disabled="!messageBuffer.length">Send</button>
+            <!-- <input type="submit" :disabled="!messageBuffer.length" value="Send"> -->
+          </form>
         </li>
       </ul>
     </section>
   </main>
 </template>
 <script>
-
-function identictonDataUri(sid) {
-  const b64PngIdenticton = new Identicton(sha1(sid).toString(), 20)
-  return `data:image/png;base64,${b64PngIdenticton}`
-}
-
-function Conversation(socketId, chatEvent) {
-  this.id = chatEvent.from
-  this.sid = socketId
-  this.humanId = humanHash(socketId)
-  this.identicon = identictonDataUri(socketId)
-  this.messages = []
-  this.lastRead = 0
-  this.archived = false
-}
-
 import io from '@/node_modules/socket.io-client/dist/socket.io.slim'
-// import io from 'socket.io-client'
-import humanHash from '@/mixins/humanHash'
-import sha1 from 'crypto-js/sha1'
-import Identicton from 'identicon.js'
 import { mapState, mapActions } from 'vuex'
+import Conversation from '@/types/Conversation.js'
+
+import MessageBox from '@/components/messageBox.vue'
+
 export default {
   name: 'LiveSupportChat',
   // mixins: [ humanHash ],
+  components: {
+    MessageBox
+  },
   data() {
     return {
       title: 'Live support chat',
@@ -296,18 +281,10 @@ export default {
     }
   },
   methods: {
-    ...mapActions(['setHasLocalStorage','addConvo', 'addMessage', 'syncFromLocalStorage']),
-    detectLocalStorage() {
-      const testVal = 'test583745'
-      try {
-        localStorage.setItem(testVal, testVal)
-        const checkVal = localStorage.getItem(testVal)
-        localStorage.removeItem(testVal)
-        return testVal === checkVal
-      } catch (e) {
-        return false
-      }
-    },
+    ...mapActions(['setHasLocalStorage','addConvo', 'addMessage', 'syncFromLocalStorage', 'touchConvo']),
+    // humanHash: humanHash,
+    encodeUrlParms: require('@/functions/encodeUrlParams.js'),
+    detectLocalStorage: require('@/functions/detectLocalStorage.js'),
     init() {
       const ls = this.detectLocalStorage()
       this.setHasLocalStorage(ls)
@@ -315,40 +292,72 @@ export default {
         this.syncFromLocalStorage()
       }
     },
+    // scrollMessageBox() {
+    //   // make sure all neccessary $refs exist
+    //   if (this.$refs.hasOwnProperty('messageBox') && Array.isArray(this.$refs.messageBox) && this.$refs.messageBox[0].$refs.hasOwnProperty('msgWindow')) {
+    //     const msgWindow = this.$refs.messageBox[0].$refs.msgWindow
+    //     msgWindow.scrollTop = msgWindow.scrollTopMax // scroll messageWindow to bottom
+    //   }
+    // },
     chatEventHandler(chatEvent) {
       const socketId = chatEvent.from.replace(/\/client#/, '')
-      const convo = this.conversations.hasOwnProperty(socketId)
+      const convo = this.conversations.find(obj => obj.sid === socketId)
       if (!convo) {
         const newConvo = new Conversation(socketId, chatEvent)
-        // newConvo.messages.push(chatEvent)
         this.addConvo(newConvo)
       } 
-      // else {
-        this.addMessage([ socketId, chatEvent ])
-      // }
+      this.addMessage([ socketId, chatEvent ])
     },
     echoChatEventHandler(echoChatEvent) {
+      console.log(echoChatEvent)
       const socketId = echoChatEvent.to.replace(/\/client#/, '')
-      const convo = this.conversations.hasOwnProperty(socketId)
+      const convo = this.conversations.find(obj => obj.sid === socketId)
       if (!convo) {
-        this.addConvo(new Conversation(socketId, echoChatEvent))
+        const newConvo = new Conversation(socketId, echoChatEvent)
+        this.addConvo(newConvo)
       }
       this.addMessage([ socketId, echoChatEvent ])
     },
-    convoClickHandler(convo) {
-      const updatedConvo = Object.assign({}, convo)
-      updatedConvo.lastRead = Date.now()
-      this.addConvo(updatedConvo)
-      this.$router.push(`?convoId=${convo.sid}`)
-    },
-    sendMessage(convo) {
-      const msgObj = { to: convo.id, message: this.messageBuffer }
+    sendMessage(convoId) {
+      if (!this.messageBuffer.length) { return false }
+      const msgObj = { to: convoId, message: this.messageBuffer }
       this.ioSocket.emit('chatEvent', msgObj)
       this.messageBuffer = ''
+    },
+    // filterMessage: (msg, convoId) => (msg.to === convoId || msg.from === convoId),
+    getConvo(sid) {
+      return this.conversations.find((convo) => convo.sid === sid)
+    },
+    hasMessages(convoId) {
+      return this.messages.some((msg) => (msg.to === convoId || msg.from === convoId))
+    },
+    getMessages(socketId) {
+      const convoId = '/client#' + socketId
+      return this.messages.filter((msg) => (msg.to === convoId || msg.from === convoId))
+    },
+    convoClickHandler(convoId) {
+      // const updatedConvo = Object.assign({}, convo)
+      // updatedConvo.lastRead = Date.now()
+      // this.addConvo(updatedConvo)
+      this.touchConvo(convoId) // updates lastRead timestamp
+      this.$router.push(this.encodeUrlParms({ convoId: convoId }))
+    },
+    clearLocalStorage() {
+      // debug/dev function
+      if (this.hasLocalStorage) {
+        const ls = Object.assign({}, localStorage)
+        Object.keys(ls).filter(str => str.startsWith('convo')).forEach(str=> localStorage.removeItem(str))
+      }
+    },
+    keyUp(e) {
+      console.log(e)
+      if (!e.shiftKey && !e.altKey && !e.ctrlKey && e.charCode === 0 && this.$refs && this.$refs.formButton && this.messageBuffer) {
+        this.$refs.formButton[0].click()
+      }
     }
   },
   computed: {
-    ...mapState(['hasLocalStorage', 'conversations', 'convoSids']),
+    ...mapState(['hasLocalStorage', 'conversations', 'convoSids', 'messages']),
     statusBar() {
       return {
         a: {
@@ -362,7 +371,7 @@ export default {
     activeConvo() {
       let output
       if (this.$route.query.convoId) {
-        output = this.conversations[this.$route.query.convoId]
+        output = this.conversations.find((convo) => convo.sid === this.$route.query.convoId)
       }
       return output
       // return this.conversations[this.$route.query.convoId]
@@ -370,7 +379,8 @@ export default {
     activeMessages() {
       // let output
       if (this.activeConvo) {
-        return this.activeConvo.messages
+        const convoId = this.$route.query.convoId
+        return this.messages.filter((msg) => msg.to.includes(convoId) || msg.from.includes(convoId) )
       }
     }
   }
